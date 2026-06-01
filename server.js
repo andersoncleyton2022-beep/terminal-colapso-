@@ -10,7 +10,10 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 const PORT = process.env.PORT || 3000;
-const SHELL = process.env.SHELL || (os.platform() === 'win32' ? 'cmd.exe' : 'bash');
+
+// Força bash interativo — resolve tela preta no Render
+const SHELL = 'bash';
+const SHELL_ARGS = ['--login', '-i'];
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/health', (_, res) => res.send('OK'));
@@ -18,21 +21,31 @@ app.get('/health', (_, res) => res.send('OK'));
 wss.on('connection', (ws) => {
   console.log('[+] Nova conexão WebSocket');
 
-  // Spawna um PTY real — igual ao Termux
-  const term = pty.spawn(SHELL, [], {
+  const term = pty.spawn(SHELL, SHELL_ARGS, {
     name: 'xterm-256color',
     cols: 80,
     rows: 24,
-    cwd: process.env.HOME || '/tmp',
+    cwd: process.env.HOME || '/root',
     env: {
       ...process.env,
       TERM: 'xterm-256color',
       COLORTERM: 'truecolor',
-      LANG: 'pt_BR.UTF-8',
+      LANG: 'en_US.UTF-8',
+      SHELL: '/bin/bash',
+      // Garante que o bash mostre o prompt
+      PS1: '\\u@cloudterm:\\w\\$ ',
+      FORCE_COLOR: '1',
     },
   });
 
   console.log(`[+] PTY criado — PID: ${term.pid}`);
+
+  // Força o bash a exibir o prompt logo ao conectar
+  setTimeout(() => {
+    if (ws.readyState === ws.OPEN) {
+      term.write('\n');
+    }
+  }, 300);
 
   // Terminal → Browser
   term.onData((data) => {
@@ -53,7 +66,6 @@ wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
     try {
       const msg = JSON.parse(raw);
-
       if (msg.type === 'input') {
         term.write(msg.data);
       } else if (msg.type === 'resize') {
