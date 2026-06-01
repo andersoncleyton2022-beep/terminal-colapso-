@@ -9,234 +9,201 @@
 <title>CloudTerm</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.css"/>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+:root {
+  --bg: #0d0f14; --surface: #13161e; --border: #1e2330;
+  --accent: #00e5a0; --accent2: #00b8ff; --warn: #ff5f57;
+  --text: #cdd6f4; --muted: #45475a; --bar-h: 44px; --keys-h: 52px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; background: var(--bg); color: var(--text);
+  font-family: 'JetBrains Mono', monospace; overflow: hidden;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
 
-  :root {
-    --bg:       #0d0f14;
-    --surface:  #13161e;
-    --border:   #1e2330;
-    --accent:   #00e5a0;
-    --accent2:  #00b8ff;
-    --warn:     #ff5f57;
-    --text:     #cdd6f4;
-    --muted:    #45475a;
-    --bar-h:    44px;
-    --keys-h:   52px;
-  }
+/* ── INPUT INVISÍVEL (fix teclado mobile) ── */
+#hidden-input {
+  position: fixed;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px; height: 1px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 16px; /* Evita zoom no iOS */
+  border: none; outline: none;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  z-index: -1;
+  /* autocorrect desligado */
+  autocomplete: off;
+  autocorrect: off;
+  autocapitalize: off;
+  spellcheck: false;
+}
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── TOP BAR ── */
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--bar-h); background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 12px; gap: 10px;
+  z-index: 100; user-select: none;
+}
+#topbar .logo {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 700; letter-spacing: .04em;
+  color: var(--accent); flex: 1;
+}
+#status-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted); transition: background .3s; flex-shrink: 0;
+}
+#status-dot.online  { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+#status-dot.offline { background: var(--warn);   box-shadow: 0 0 6px var(--warn);   }
+#status-label { font-size: 10px; color: var(--muted); transition: color .3s; }
+.topbtn {
+  background: var(--border); border: none; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  padding: 5px 10px; border-radius: 5px; cursor: pointer;
+  transition: background .15s, color .15s; white-space: nowrap;
+}
+.topbtn:active { background: var(--accent); color: #000; }
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    overflow: hidden;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
+/* ── TERMINAL ── */
+#terminal-wrap {
+  position: fixed; top: var(--bar-h); left: 0; right: 0;
+  bottom: var(--keys-h); overflow: hidden; background: var(--bg);
+}
+#terminal { width: 100%; height: 100%; padding: 6px 4px 4px 4px; }
+.xterm { height: 100% !important; }
+.xterm-viewport { overflow-y: auto !important; }
+.xterm-screen { width: 100% !important; }
 
-  /* ── TOP BAR ── */
-  #topbar {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: var(--bar-h);
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    gap: 10px;
-    z-index: 100;
-    user-select: none;
-  }
+/* ── SPLASH ── */
+#splash {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 18px;
+  background: var(--bg); z-index: 10; transition: opacity .4s;
+}
+#splash.hidden { opacity: 0; pointer-events: none; }
+#splash .big-icon {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 20px; display: flex; align-items: center; justify-content: center;
+}
+#splash h2 {
+  font-size: 22px; font-weight: 700; letter-spacing: .05em;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+#splash p { font-size: 12px; color: var(--muted); text-align: center; padding: 0 30px; }
+#connect-btn {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #000; font-family: 'JetBrains Mono', monospace;
+  font-weight: 700; font-size: 14px; border: none;
+  padding: 13px 36px; border-radius: 10px; cursor: pointer;
+  letter-spacing: .05em; box-shadow: 0 4px 24px rgba(0,229,160,.25);
+  transition: transform .1s, box-shadow .1s;
+}
+#connect-btn:active { transform: scale(.97); box-shadow: none; }
 
-  #topbar .logo {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: .04em;
-    color: var(--accent);
-    flex: 1;
-  }
+/* ── KEYBAR ── */
+#keybar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: var(--keys-h); background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center;
+  overflow-x: auto; overflow-y: hidden;
+  gap: 6px; padding: 0 8px; z-index: 100;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+#keybar::-webkit-scrollbar { display: none; }
+.key {
+  flex-shrink: 0; background: var(--border); border: none;
+  color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 700; height: 34px;
+  min-width: 36px; padding: 0 10px; border-radius: 6px; cursor: pointer;
+  transition: background .1s, color .1s, transform .08s;
+  white-space: nowrap; display: flex; align-items: center; justify-content: center;
+}
+.key:active { background: var(--accent); color: #000; transform: scale(.93); }
+.key.accent { background: rgba(0,229,160,.12); color: var(--accent); border: 1px solid rgba(0,229,160,.25); }
+.key.danger { background: rgba(255,95,87,.10); color: var(--warn); border: 1px solid rgba(255,95,87,.25); }
+.key.kb-active { background: var(--accent) !important; color: #000 !important; }
 
-  #topbar .logo svg { flex-shrink: 0; }
+/* ── RECONNECT ── */
+#reconnect-overlay {
+  display: none; position: absolute; inset: 0;
+  background: rgba(13,15,20,.85); backdrop-filter: blur(4px);
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; z-index: 20;
+}
+#reconnect-overlay.show { display: flex; }
+#reconnect-overlay p { color: var(--warn); font-size: 13px; }
+#reconnect-overlay button {
+  background: var(--warn); color: #fff;
+  font-family: 'JetBrains Mono', monospace; font-weight: 700;
+  font-size: 13px; border: none; padding: 11px 28px;
+  border-radius: 8px; cursor: pointer;
+}
 
-  #status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--muted);
-    transition: background .3s;
-    flex-shrink: 0;
-  }
-  #status-dot.online  { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
-  #status-dot.offline { background: var(--warn);   box-shadow: 0 0 6px var(--warn); }
-
-  #status-label {
-    font-size: 10px;
-    color: var(--muted);
-    transition: color .3s;
-  }
-
-  .topbtn {
-    background: var(--border);
-    border: none;
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    padding: 5px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background .15s, color .15s;
-    white-space: nowrap;
-  }
-  .topbtn:active { background: var(--accent); color: #000; }
-
-  /* ── TERMINAL WRAPPER ── */
-  #terminal-wrap {
-    position: fixed;
-    top: var(--bar-h);
-    left: 0; right: 0;
-    bottom: var(--keys-h);
-    overflow: hidden;
-    background: var(--bg);
-  }
-
-  #terminal {
-    width: 100%;
-    height: 100%;
-    padding: 6px 4px 4px 4px;
-  }
-
-  /* fix xterm canvas */
-  .xterm { height: 100% !important; }
-  .xterm-viewport { overflow-y: auto !important; }
-  .xterm-screen  { width: 100% !important; }
-
-  /* ── SPLASH (before connect) ── */
-  #splash {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 18px;
-    background: var(--bg);
-    z-index: 10;
-    transition: opacity .4s;
-  }
-  #splash.hidden { opacity: 0; pointer-events: none; }
-
-  #splash .big-icon {
-    width: 72px; height: 72px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  #splash h2 {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: .05em;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  #splash p { font-size: 12px; color: var(--muted); text-align: center; padding: 0 30px; }
-
-  #connect-btn {
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    color: #000;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 14px;
-    border: none;
-    padding: 13px 36px;
-    border-radius: 10px;
-    cursor: pointer;
-    letter-spacing: .05em;
-    box-shadow: 0 4px 24px rgba(0,229,160,.25);
-    transition: transform .1s, box-shadow .1s;
-  }
-  #connect-btn:active { transform: scale(.97); box-shadow: none; }
-
-  /* ── EXTRA KEYS BAR ── */
-  #keybar {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: var(--keys-h);
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 6px;
-    padding: 0 8px;
-    z-index: 100;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  #keybar::-webkit-scrollbar { display: none; }
-
-  .key {
-    flex-shrink: 0;
-    background: var(--border);
-    border: none;
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    height: 34px;
-    min-width: 36px;
-    padding: 0 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background .1s, color .1s, transform .08s;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .key:active  { background: var(--accent); color: #000; transform: scale(.93); }
-  .key.accent  { background: rgba(0,229,160,.12); color: var(--accent); border: 1px solid rgba(0,229,160,.25); }
-  .key.danger  { background: rgba(255,95,87,.10);  color: var(--warn);   border: 1px solid rgba(255,95,87,.25); }
-
-  /* ── RECONNECT OVERLAY ── */
-  #reconnect-overlay {
-    display: none;
-    position: absolute;
-    inset: 0;
-    background: rgba(13,15,20,.85);
-    backdrop-filter: blur(4px);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    z-index: 20;
-  }
-  #reconnect-overlay.show { display: flex; }
-  #reconnect-overlay p { color: var(--warn); font-size: 13px; }
-  #reconnect-overlay button {
-    background: var(--warn);
-    color: #fff;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 13px;
-    border: none;
-    padding: 11px 28px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
+/* ── SMART KEYBOARD POPUP ── */
+#smart-kb {
+  display: none;
+  position: fixed; bottom: var(--keys-h); left: 0; right: 0;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 8px; z-index: 99;
+  flex-direction: column; gap: 6px;
+}
+#smart-kb.show { display: flex; }
+#smart-kb-input-row {
+  display: flex; gap: 6px; align-items: center;
+}
+#smart-kb-input {
+  flex: 1;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; padding: 7px 10px; border-radius: 6px;
+  outline: none;
+}
+#smart-kb-input:focus { border-color: var(--accent); }
+#smart-kb-send {
+  background: var(--accent); color: #000;
+  font-family: 'JetBrains Mono', monospace; font-weight: 700;
+  font-size: 12px; border: none; padding: 7px 14px;
+  border-radius: 6px; cursor: pointer; white-space: nowrap;
+}
+#smart-kb-send:active { opacity: .8; }
+#smart-kb-suggestions {
+  display: flex; gap: 6px; overflow-x: auto;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+#smart-kb-suggestions::-webkit-scrollbar { display: none; }
+.suggestion-chip {
+  flex-shrink: 0; background: rgba(0,229,160,.08);
+  border: 1px solid rgba(0,229,160,.2); color: var(--accent);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  padding: 4px 10px; border-radius: 20px; cursor: pointer;
+  white-space: nowrap;
+}
+.suggestion-chip:active { background: rgba(0,229,160,.25); }
 </style>
 </head>
 <body>
+
+<!-- INPUT INVISÍVEL — fix teclado mobile -->
+<input
+  id="hidden-input"
+  type="text"
+  inputmode="text"
+  autocomplete="off"
+  autocorrect="off"
+  autocapitalize="off"
+  spellcheck="false"
+/>
 
 <!-- TOP BAR -->
 <div id="topbar">
@@ -275,7 +242,26 @@
   </div>
 </div>
 
-<!-- EXTRA KEYS -->
+<!-- SMART KEYBOARD POPUP -->
+<div id="smart-kb">
+  <div id="smart-kb-suggestions">
+    <!-- chips gerados dinamicamente -->
+  </div>
+  <div id="smart-kb-input-row">
+    <input
+      id="smart-kb-input"
+      type="text"
+      placeholder="Digite e pressione ↵..."
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+    />
+    <button id="smart-kb-send" onclick="smartKbSend()">Enviar ↵</button>
+  </div>
+</div>
+
+<!-- KEYBAR -->
 <div id="keybar">
   <button class="key accent" onclick="sendKey('\t')">TAB</button>
   <button class="key danger" onclick="sendCtrl('c')">CTRL+C</button>
@@ -292,27 +278,123 @@
   <button class="key" onclick="sendKey('\x1b[3~')">DEL</button>
   <button class="key" onclick="sendKey('\x1b[5~')">PG↑</button>
   <button class="key" onclick="sendKey('\x1b[6~')">PG↓</button>
-  <button class="key accent" onclick="focusInput()">Teclado</button>
+  <button id="kb-toggle-btn" class="key accent" onclick="toggleSmartKb()">⌨ Teclado</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm-addon-fit/0.8.0/xterm-addon-fit.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm-addon-web-links/0.9.0/xterm-addon-web-links.min.js"></script>
-
 <script>
-// ── CONFIG ──────────────────────────────────────────
 const WS_URL = (() => {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   return `${proto}://${location.host}`;
 })();
 
-// ── STATE ────────────────────────────────────────────
 let term, fitAddon, ws;
 let termReady = false;
+let smartKbOpen = false;
 
-// ── INIT XTERM ───────────────────────────────────────
+// ── COMANDOS SUGERIDOS ────────────────────────────────
+const COMMAND_SUGGESTIONS = [
+  'ls -la', 'pwd', 'cd ~', 'clear', 'cat ', 'nano ',
+  'mkdir ', 'rm -rf ', 'cp ', 'mv ', 'grep -r ',
+  'ps aux', 'top', 'df -h', 'free -h',
+  'node ', 'npm ', 'python3 ', 'git status',
+  'git log --oneline', 'git add .', 'git commit -m ""',
+  'curl ', 'wget ', 'chmod +x ', 'sudo ',
+];
+
+// ── SMART KEYBOARD ────────────────────────────────────
+function toggleSmartKb() {
+  smartKbOpen = !smartKbOpen;
+  const kb = document.getElementById('smart-kb');
+  const btn = document.getElementById('kb-toggle-btn');
+  if (smartKbOpen) {
+    kb.classList.add('show');
+    btn.classList.add('kb-active');
+    renderSuggestions('');
+    setTimeout(() => document.getElementById('smart-kb-input').focus(), 100);
+  } else {
+    kb.classList.remove('show');
+    btn.classList.remove('kb-active');
+    focusHidden();
+  }
+  doResize();
+}
+
+function renderSuggestions(filter) {
+  const container = document.getElementById('smart-kb-suggestions');
+  const f = filter.toLowerCase();
+  const matches = filter
+    ? COMMAND_SUGGESTIONS.filter(c => c.toLowerCase().startsWith(f)).slice(0, 12)
+    : COMMAND_SUGGESTIONS.slice(0, 12);
+  container.innerHTML = matches.map(cmd =>
+    `<button class="suggestion-chip" onclick="useSuggestion(${JSON.stringify(cmd)})">${cmd}</button>`
+  ).join('');
+}
+
+function useSuggestion(cmd) {
+  const inp = document.getElementById('smart-kb-input');
+  inp.value = cmd;
+  inp.focus();
+  // coloca cursor no fim
+  inp.setSelectionRange(cmd.length, cmd.length);
+  renderSuggestions(cmd);
+}
+
+function smartKbSend() {
+  const inp = document.getElementById('smart-kb-input');
+  const text = inp.value;
+  if (!text) return;
+  sendKey(text + '\r');
+  inp.value = '';
+  renderSuggestions('');
+  inp.focus();
+}
+
+// Atualiza sugestões conforme digita
+document.getElementById('smart-kb-input').addEventListener('input', (e) => {
+  renderSuggestions(e.target.value);
+});
+
+// Enter no campo smart-kb
+document.getElementById('smart-kb-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    smartKbSend();
+  }
+});
+
+// ── INPUT INVISÍVEL (fix teclado nativo mobile) ───────
+const hiddenInput = document.getElementById('hidden-input');
+
+function focusHidden() {
+  if (!termReady) return;
+  try { hiddenInput.focus({ preventScroll: true }); } catch(_) {}
+}
+
+hiddenInput.addEventListener('input', (e) => {
+  const val = hiddenInput.value;
+  if (!val) return;
+  sendKey(val);
+  hiddenInput.value = '';
+});
+
+hiddenInput.addEventListener('keydown', (e) => {
+  // Teclas especiais que não disparam 'input'
+  if (e.key === 'Enter')     { e.preventDefault(); sendKey('\r'); }
+  if (e.key === 'Backspace') { e.preventDefault(); sendKey('\x7f'); }
+  if (e.key === 'Tab')       { e.preventDefault(); sendKey('\t'); }
+  if (e.key === 'Escape')    { e.preventDefault(); sendKey('\x1b'); }
+  if (e.key === 'ArrowUp')   { e.preventDefault(); sendKey('\x1b[A'); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); sendKey('\x1b[B'); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); sendKey('\x1b[D'); }
+  if (e.key === 'ArrowRight'){ e.preventDefault(); sendKey('\x1b[C'); }
+});
+
+// ── XTERM ─────────────────────────────────────────────
 function buildTerminal() {
-  if (term) { term.dispose(); }
+  if (term) term.dispose();
 
   term = new Terminal({
     cursorBlink: true,
@@ -321,19 +403,15 @@ function buildTerminal() {
     fontSize: window.innerWidth < 400 ? 12 : 13,
     lineHeight: 1.2,
     theme: {
-      background:    '#0d0f14',
-      foreground:    '#cdd6f4',
-      cursor:        '#00e5a0',
-      cursorAccent:  '#0d0f14',
+      background: '#0d0f14', foreground: '#cdd6f4',
+      cursor: '#00e5a0', cursorAccent: '#0d0f14',
       selectionBackground: 'rgba(0,229,160,0.25)',
-      black:   '#45475a', red:     '#f38ba8',
-      green:   '#a6e3a1', yellow:  '#f9e2af',
-      blue:    '#89b4fa', magenta: '#f5c2e7',
-      cyan:    '#94e2d5', white:   '#bac2de',
-      brightBlack:   '#585b70', brightRed:     '#f38ba8',
-      brightGreen:   '#a6e3a1', brightYellow:  '#f9e2af',
-      brightBlue:    '#89b4fa', brightMagenta: '#f5c2e7',
-      brightCyan:    '#94e2d5', brightWhite:   '#a6adc8',
+      black: '#45475a', red: '#f38ba8', green: '#a6e3a1',
+      yellow: '#f9e2af', blue: '#89b4fa', magenta: '#f5c2e7',
+      cyan: '#94e2d5', white: '#bac2de',
+      brightBlack: '#585b70', brightRed: '#f38ba8', brightGreen: '#a6e3a1',
+      brightYellow: '#f9e2af', brightBlue: '#89b4fa', brightMagenta: '#f5c2e7',
+      brightCyan: '#94e2d5', brightWhite: '#a6adc8',
     },
     allowProposedApi: true,
     scrollback: 5000,
@@ -343,36 +421,39 @@ function buildTerminal() {
   fitAddon = new FitAddon.FitAddon();
   term.loadAddon(fitAddon);
   term.loadAddon(new WebLinksAddon.WebLinksAddon());
-
   term.open(document.getElementById('terminal'));
   fitAddon.fit();
-
   termReady = true;
 
-  // Input → WebSocket
+  // xterm input → WS
   term.onData((data) => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'input', data }));
     }
   });
 
-  // Mantém o teclado aberto no mobile ao tocar no terminal
-  term.element.addEventListener('touchend', () => {
-    setTimeout(() => term.focus(), 80);
+  // Toque no terminal → foca input invisível (abre teclado)
+  term.element.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    setTimeout(focusHidden, 80);
+  });
+
+  // Click no terminal (desktop) → foca normalmente
+  term.element.addEventListener('click', () => {
+    if (!smartKbOpen) focusHidden();
   });
 }
 
-// ── WEBSOCKET ────────────────────────────────────────
+// ── WEBSOCKET ─────────────────────────────────────────
 function connectWS() {
   setStatus('connecting');
-
   ws = new WebSocket(WS_URL);
 
   ws.onopen = () => {
     setStatus('online');
     document.getElementById('reconnect-overlay').classList.remove('show');
     sendResize();
-    term.focus();
+    focusHidden();
   };
 
   ws.onmessage = (evt) => {
@@ -389,22 +470,17 @@ function connectWS() {
 
   ws.onclose = () => {
     setStatus('offline');
-    if (termReady) {
-      document.getElementById('reconnect-overlay').classList.add('show');
-    }
+    if (termReady) document.getElementById('reconnect-overlay').classList.add('show');
   };
 
-  ws.onerror = () => {
-    setStatus('offline');
-  };
+  ws.onerror = () => setStatus('offline');
 }
 
-// ── PUBLIC ACTIONS ───────────────────────────────────
+// ── AÇÕES PÚBLICAS ────────────────────────────────────
 function initTerminal() {
   const splash = document.getElementById('splash');
   splash.classList.add('hidden');
-  setTimeout(() => { splash.style.display = 'none'; }, 400);
-
+  setTimeout(() => splash.style.display = 'none', 400);
   buildTerminal();
   connectWS();
 }
@@ -415,30 +491,23 @@ function reconnect() {
   connectWS();
 }
 
-function clearTerminal() {
-  if (term) term.clear();
-}
+function clearTerminal() { if (term) term.clear(); }
 
 function sendKey(seq) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'input', data: seq }));
   }
-  if (term) term.focus();
+  if (!smartKbOpen) focusHidden();
 }
 
 function sendCtrl(key) {
-  const code = key.toLowerCase().charCodeAt(0) - 96;
-  sendKey(String.fromCharCode(code));
+  sendKey(String.fromCharCode(key.toLowerCase().charCodeAt(0) - 96));
 }
 
 function sendEsc() { sendKey('\x1b'); }
 
-function focusInput() {
-  if (term) term.focus();
-}
-
-// ── RESIZE ───────────────────────────────────────────
-function sendResize() {
+// ── RESIZE ────────────────────────────────────────────
+function doResize() {
   if (!fitAddon || !ws || ws.readyState !== WebSocket.OPEN) return;
   fitAddon.fit();
   const dims = fitAddon.proposeDimensions();
@@ -447,36 +516,41 @@ function sendResize() {
   }
 }
 
-const resizeObserver = new ResizeObserver(() => {
-  if (termReady) { fitAddon.fit(); sendResize(); }
-});
+const resizeObserver = new ResizeObserver(() => { if (termReady) { fitAddon.fit(); doResize(); } });
 resizeObserver.observe(document.getElementById('terminal-wrap'));
+window.addEventListener('resize', () => { if (termReady) { fitAddon.fit(); doResize(); } });
 
-window.addEventListener('resize', () => {
-  if (termReady) { fitAddon.fit(); sendResize(); }
-});
-
-// Teclado virtual mobile → redimensiona
 window.visualViewport?.addEventListener('resize', () => {
   const wrap = document.getElementById('terminal-wrap');
-  const vvh = window.visualViewport.height;
-  const barH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--bar-h'));
+  const kb   = document.getElementById('smart-kb');
   const keyH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--keys-h'));
-  const keybarTop = window.innerHeight - keyH;
-  const kbHeight = Math.max(0, window.innerHeight - vvh);
-  wrap.style.bottom = (keyH + kbHeight) + 'px';
-  document.getElementById('keybar').style.bottom = kbHeight + 'px';
-  if (termReady) { fitAddon.fit(); sendResize(); }
+  const kbH  = Math.max(0, window.innerHeight - window.visualViewport.height);
+  const smartH = smartKbOpen ? (kb.offsetHeight || 0) : 0;
+
+  wrap.style.bottom = (keyH + kbH + smartH) + 'px';
+  document.getElementById('keybar').style.bottom = kbH + 'px';
+  if (smartKbOpen) kb.style.bottom = (keyH + kbH) + 'px';
+
+  if (termReady) { fitAddon.fit(); doResize(); }
 });
 
-// ── STATUS ───────────────────────────────────────────
+// ── STATUS ────────────────────────────────────────────
 function setStatus(s) {
   const dot   = document.getElementById('status-dot');
   const label = document.getElementById('status-label');
   dot.className = '';
-  if (s === 'online')      { dot.classList.add('online');  label.textContent = 'conectado'; label.style.color = 'var(--accent)'; }
-  else if (s === 'offline'){ dot.classList.add('offline'); label.textContent = 'desconectado'; label.style.color = 'var(--warn)'; }
-  else                     { label.textContent = 'conectando…'; label.style.color = 'var(--muted)'; }
+  if (s === 'online') {
+    dot.classList.add('online');
+    label.textContent = 'conectado';
+    label.style.color = 'var(--accent)';
+  } else if (s === 'offline') {
+    dot.classList.add('offline');
+    label.textContent = 'desconectado';
+    label.style.color = 'var(--warn)';
+  } else {
+    label.textContent = 'conectando…';
+    label.style.color = 'var(--muted)';
+  }
 }
 </script>
 </body>
