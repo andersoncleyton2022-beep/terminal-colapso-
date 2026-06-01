@@ -1,0 +1,18 @@
+{
+  "name": "cloudterm",
+  "version": "2.0.0",
+  "description": "Terminal real na nuvem — WebSocket + node-pty",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "npm rebuild"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-pty": "^1.0.0",
+    "ws": "^8.17.0"
+  }
+}
